@@ -18,9 +18,9 @@ frame_counter = 0
 game_over = False  # Novo stanje za konec igre
 winner = None  # Shrani zmagovalca
 
-udar1 = pygame.transform.scale(pygame.image.load("efekti\\udar1.png"), (100, 100)),
-udar2 = pygame.transform.scale(pygame.image.load("efekti\\udar1.png"), (100, 100)),
-udar3 = pygame.transform.scale(pygame.image.load("efekti\\udar1.png"), (100, 100))
+udar1 = pygame.transform.scale(pygame.image.load("efekti\udar1.png"), (100, 100))
+udar2 = pygame.transform.scale(pygame.image.load("efekti\udar2.png"), (100, 100))
+udar3 = pygame.transform.scale(pygame.image.load("efekti\udar3.png"), (100, 100))
 
 KO = pygame.transform.scale(pygame.image.load("efekti\KO.png"), (300,300))
 game_over_bg = pygame.transform.scale(pygame.image.load("efekti\game_over.jpg"), (1280,720))
@@ -121,6 +121,7 @@ class Borec:
         self.udarec_cooldown = 0
         self.zadnji_udarec_frame = -1 
         self.score = 0
+        self.udarec_animacija = False
     
     def zbij_health(self, vrednost):
         self.health -= vrednost
@@ -238,10 +239,6 @@ class Borec:
     def preveri_health(self):
         if self.health <= 0:
                 screen.blit()
-
-   
-
-
 class MAP:
     def __init__(self, picture, max_x, min_x, max_y, min_y, sound):
         self.url = pygame.image.load(picture)
@@ -309,6 +306,17 @@ player2_blok_levo = pygame.transform.scale(pygame.image.load("player2\defend\pla
 player2_strela_desno = pygame.transform.scale(pygame.image.load("player2\strela\player2_strela_desno.png"), (350, 350))
 player2_strela_levo = pygame.transform.scale(pygame.image.load("player2\strela\player2_strela_levo.png"), (350, 350))
 
+
+p1_cl_1 = pygame.transform.scale(pygame.image.load("StreetBros/player1/attack/player1_hit_levo_1.png"), (350, 350))
+p1_cl_2 = pygame.transform.scale(pygame.image.load("StreetBros/player1/attack/player1_hit_levo_2.png"), (350, 350))
+p1_cl_3 = pygame.transform.scale(pygame.image.load("StreetBros/player1/attack/player1_hit_levo_3.png"), (350, 350))
+
+p1_cd_1 = pygame.transform.scale(pygame.image.load("StreetBros/player1/attack/player1_hit_desno_1.png"), (350, 350))
+p1_cd_2 = pygame.transform.scale(pygame.image.load("StreetBros/player1/attack/player1_hit_desno_2.png"), (350, 350))
+p1_cd_3 = pygame.transform.scale(pygame.image.load("StreetBros/player1/attack/player1_hit_desno_3.png"), (350, 350))
+
+player1_attack_levo = [p1_cl_1,p1_cl_2,p1_cl_3]
+player1_attack_desno = [p1_cd_1,p1_cd_2,p1_cd_3]
 
 
 
@@ -475,6 +483,14 @@ while Borba:
         
         elif event.type == pygame.KEYDOWN:
             # Igralec 1
+
+            if event.key == pygame.K_r:  # Udarec s tipko 'r'
+                Player1.udarec_animacija = True
+                Player1.udarec_frame = 0
+                Player1.udarec_cooldown = 15
+                Player1.zadnji_udarec_frame = -1
+
+
             if event.key == pygame.K_q and Player1.smer == 1 and Player1.blok == False: 
                 Player1.special = True
                 Current_slika_1 = player1_fireball_desno
@@ -564,6 +580,12 @@ while Borba:
         # Spuščanje tipk
         elif event.type == pygame.KEYUP:
             
+            if event.key == pygame.K_r:
+                Player1.udarec_animacija = False
+                if Player1.smer == 1:
+                    Current_slika_1 = player1_stand_desno
+                else:
+                    Current_slika_1 = player1_stand_levo
 
             if event.key == pygame.K_p:
                 Player2.udarec_animacija = False
@@ -773,6 +795,44 @@ while Borba:
             Player2.y = Player2_y_start
             Player2.skok = False
             Player2.hitrost_skoka = 0
+
+
+    if Player1.udarec_animacija:
+        if Player1.udarec_cooldown > 0:
+            Player1.udarec_cooldown -= 1
+            
+            # Določimo območje udarca
+            x1, y1, x2, y2 = Player1.get_rezilo_pozicija()
+            
+            # Preverimo trk samo v aktivnih delih animacije
+            if Player1.udarec_frame in [1, 2] and Player1.zadnji_udarec_frame != Player1.udarec_frame:
+                # Preverimo prekrivanje z nasprotnikom
+                if (x1 < Player2.x + 200 and x2 > Player2.x and
+                    y1 < Player2.y + 300 and y2 > Player2.y):
+                    
+                    # Preverimo blok
+                    if not Player2.blok or (Player2.blok and Player2.smer != Player1.smer):
+                        Player2.zbij_health(15)
+                        udar_effects.append(UdarEffect((x1+x2)//2, (y1+y2)//2))
+                        Player1.zadnji_udarec_frame = Player1.udarec_frame
+            
+            # Prikažemo pravo sliko za animacijo
+            if Player1.smer == 1:
+                Current_slika_1 = player1_attack_desno[Player1.udarec_frame]
+            else:
+                Current_slika_1 = player1_attack_levo[Player1.udarec_frame]
+            
+            # Posodobimo frame animacije
+            if frame_counter % 5 == 0:
+                Player1.udarec_frame = (Player1.udarec_frame + 1) % len(player1_attack_desno)
+        else:
+            Player1.udarec_animacija = False
+            Player1.zadnji_udarec_frame = -1
+            # Vrnitev v osnovno pozicijo
+            if Player1.smer == 1:
+                Current_slika_1 = player1_stand_desno
+            else:
+                Current_slika_1 = player1_stand_levo
 
     
     if game_over:
